@@ -1,81 +1,65 @@
-{-#LANGUAGE OverloadedStrings #-}
-module Parser
-    (
-        lexicalAnalyze,
-        lexicalAnalyzeOneWord,
-        Symbol(..),
-        LexicalObject(..)
-    )where 
+{-# LANGUAGE BlockArguments, OverloadedStrings #-}
+module Parser (
+   genST,
+    Atom(..),
+    ST
+)where
 
-import Lib
-import qualified Data.Text as T
+    import qualified Data.Text as T 
+    import Data.Function 
+    import Lexer
+    import Node
 
+    import Debug.Trace
 
-data Symbol = 
-    Plus -- +
-    | Minus  -- -
-    | BackSlash  -- /
-    | Asterisk  -- *
-    | ParenthesesOpen -- (
-    | ParenthesesClose -- )
-    deriving (Eq, Show, Read)
+    data Atom = 
+       NULL |  Number Int | Operator Symbol
+       deriving (Show , Read, Eq)
+    type ST = Node Atom
 
-data LexicalObject = 
-    NLiteral T.Text | ValidSymbol Symbol
-    deriving (Eq, Show, Read)
+    type ProcessedObject = (ST, [LexicalObject])
 
-isWhiteSpace :: Char -> Bool
-isWhiteSpace t = t `elem` ['\t', ' ', '\n', '\v', '\f']
+    -- (a1 a2 ... an) == (a1 (a2 (... an)...)))
+    consumeParentheses :: [LexicalObject] -> [LexicalObject]
+    consumeParentheses [] = []
+    consumeParentheses (lex:lexs) = case lex of 
+        ValidSymbol ParenthesesOpen -> consumeParentheses lexs 
+        ValidSymbol ParenthesesClose -> consumeParentheses lexs 
+        _ -> lex:lexs
 
-isPunctuator :: Char -> Bool
-isPunctuator t = t `elem` ['(', ')']
+    chopBlock :: [LexicalObject] -> Maybe ([LexicalObject], [LexicalObject])
+    chopBlock [] = Just ([], [])
+    chopBlock (lo:los) = case lo of 
+      NLiteral txt -> Just ([lo], los)
+      ValidSymbol sym -> case sym of 
+        ParenthesesOpen -> flip fix (los, 1, 0) \loop (tokens, n, result) ->
+            if n <= 0 then Just (take (result -1) los, drop result los)
+            else case tokens of
+              [] -> Nothing 
+              lo' : los' -> case lo' of 
+                ValidSymbol ParenthesesOpen -> loop (los', n + 1, result + 1)
+                ValidSymbol ParenthesesClose -> loop (los', n -1, result + 1)
+                _ -> loop (los', n, result + 1)
+        ParenthesesClose -> Nothing
+        _ -> Just ([lo], los)
+    
 
-isNLiteral :: T.Text -> Bool 
-isNLiteral t = T.foldl (\a c -> '0' <= c && c <= '9' && a) (not $ T.null t) t
-
-getWordEndIndex :: T.Text -> Int
-getWordEndIndex t = getter t 0
-    where
-        getter text n | T.null text = n
-                   | n >= T.length text - 1 = T.length text - 1
-                   | isWhiteSpace (T.index text (n + 1)) || isPunctuator (T.index text (n + 1)) = n
-                   | isPunctuator $ T.index text n = n
-                   | otherwise = getter text (n + 1)
-
-wordGetter :: T.Text -> T.Text
-wordGetter t = T.take (getWordEndIndex t + 1) t
-
-wordCutter :: T.Text -> T.Text
-wordCutter t = T.drop (getWordEndIndex t + 1) t
-
-skip :: T.Text -> T.Text
-skip t | isWhiteSpace (T.head t) = skip (T.tail t)
-       | otherwise = t
-
-getSymbol :: T.Text -> Maybe Symbol
-getSymbol t = case t of 
-    "+" -> Just  Plus 
-    "-" -> Just Minus
-    "*" -> Just Asterisk
-    "/" -> Just BackSlash
-    "(" -> Just ParenthesesOpen
-    ")" -> Just ParenthesesClose
-    _ -> Nothing
-
-lexicalAnalyzeOneWord :: T.Text -> Maybe LexicalObject
-lexicalAnalyzeOneWord t | isNLiteral t = Just  (NLiteral t)
-                        | otherwise = do 
-                            s <- getSymbol t
-                            Just (ValidSymbol s)
-
-lexicalAnalyze :: T.Text -> Either T.Text [LexicalObject]
-lexicalAnalyze t = analyzer t []
-    where
-        analyzer :: T.Text -> [LexicalObject] -> Either T.Text [LexicalObject]
-        analyzer text list | T.null text = Right list
-                           | isWhiteSpace $ T.head text = analyzer (skip text) list
-                           | otherwise = 
-                                case lexicalAnalyzeOneWord (wordGetter text) of
-                                    Just lex -> analyzer (wordCutter text) (list <> [lex])
-                                    Nothing -> Left ("fail to analyze at: " <> text)
+    genST :: [LexicalObject] -> Either T.Text ST
+    genST [] = Right $ Leaf NULL
+    genST (lo:los) = case lo of 
+      NLiteral txt -> case consumeParentheses los of  
+        [] -> Right $ Leaf (Number $ read $ T.unpack txt)
+        _ -> do 
+            str <- genST los
+            Right $ Tree NULL (Leaf (Number $ read $ T.unpack txt)) str 
+      ValidSymbol sym -> case sym of 
+        ParenthesesOpen -> genST los
+        ParenthesesClose -> genST los
+        _ -> case chopBlock los of 
+          Nothing -> Left "mismatch )"
+          Just (block, res) -> do 
+            stl <- genST block
+            str <- genST res 
+            trace ("block: " <> show block <> "\nres: " <> show res) $ 
+                Right $ Tree (Operator sym) stl str
 

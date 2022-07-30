@@ -25,7 +25,9 @@ source-repository head
 
 library
   exposed-modules:
+      Lexer
       Lib
+      Node
       Parser
   other-modules:
       Paths_lispinterpriter
