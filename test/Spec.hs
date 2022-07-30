@@ -3,12 +3,13 @@ import Lib
 import Lexer
 import Node 
 import Parser
+import Executer
 import Test.HUnit
 
 main = 
     runTestTT tests
 
-tests = TestList $ concat [testLexicalAnalyzerOneWord, testLexicalAnalyze, testGenST]
+tests = TestList $ concat [testLexicalAnalyzerOneWord, testLexicalAnalyze, testGenST, testEvalAtom]
 testLexicalAnalyzerOneWord = [
     TestCase (assertEqual "for lexicalAnalyzeOneWord" (lexicalAnalyzeOneWord "+") (Just $ ValidSymbol Plus)),
     TestCase (assertEqual "for lexicalAnalyzeOneWord" (lexicalAnalyzeOneWord "FAIL") Nothing)
@@ -38,5 +39,17 @@ testGenST = [
                 in genST arg
             )
             (Right $ Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2)))))
+    )
+    ]
+
+testEvalAtom = [
+    TestCase (
+        assertEqual "check evalAtom"
+            (
+                evalAtom $ Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2))))
+            )
+            (
+                [Number 0]
+            )
     )
     ]

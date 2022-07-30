@@ -61,11 +61,3 @@ module Parser (
         _ -> do 
                 right <- genST los
                 Right $ Tree (Leaf $ Operator sym) right  
-            -- case chopBlock los of 
-        --   Nothing -> Left "mismatch )"
-        --   Just (block, res) -> do 
-        --     stl <- genST block
-        --     str <- genST res 
-        --     trace ("block: " <> show block <> "\nres: " <> show res) $ 
-        --         Right $ Tree (Operator sym) stl str
-
