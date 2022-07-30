@@ -37,6 +37,6 @@ testGenST = [
                     arg = [ValidSymbol ParenthesesOpen, ValidSymbol Plus, NLiteral "1", ValidSymbol ParenthesesOpen, ValidSymbol Minus, NLiteral "1", NLiteral "2", ValidSymbol ParenthesesClose, ValidSymbol ParenthesesClose] 
                 in genST arg
             )
-            (Right $ Tree (Operator Plus) (Leaf $ Number 1) (Tree (Operator Minus) (Leaf $ Number 1) (Leaf $ Number 2)))
+            (Right $ Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2)))))
     )
     ]

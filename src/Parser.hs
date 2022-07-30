@@ -47,19 +47,25 @@ module Parser (
     genST :: [LexicalObject] -> Either T.Text ST
     genST [] = Right $ Leaf NULL
     genST (lo:los) = case lo of 
+    -- if number then check los contains only parentheses or not  
       NLiteral txt -> case consumeParentheses los of  
         [] -> Right $ Leaf (Number $ read $ T.unpack txt)
         _ -> do 
             str <- genST los
-            Right $ Tree NULL (Leaf (Number $ read $ T.unpack txt)) str 
+            Right $ Tree (Leaf (Number $ read $ T.unpack txt)) str 
+    -- if symbol check this is parentheses
       ValidSymbol sym -> case sym of 
         ParenthesesOpen -> genST los
         ParenthesesClose -> genST los
-        _ -> case chopBlock los of 
-          Nothing -> Left "mismatch )"
-          Just (block, res) -> do 
-            stl <- genST block
-            str <- genST res 
-            trace ("block: " <> show block <> "\nres: " <> show res) $ 
-                Right $ Tree (Operator sym) stl str
+        -- if this is not parentheses then check 
+        _ -> do 
+                right <- genST los
+                Right $ Tree (Leaf $ Operator sym) right  
+            -- case chopBlock los of 
+        --   Nothing -> Left "mismatch )"
+        --   Just (block, res) -> do 
+        --     stl <- genST block
+        --     str <- genST res 
+        --     trace ("block: " <> show block <> "\nres: " <> show res) $ 
+        --         Right $ Tree (Operator sym) stl str
 
