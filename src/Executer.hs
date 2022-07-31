@@ -51,8 +51,17 @@ module Executer (
     simplifyAST (SBI op asts) = simplifySBI op asts
     simplifyAST (List asts) = List (map simplifyAST asts)
 
+    prettyPrintAST :: AST -> T.Text
+    prettyPrintAST (S d) = T.pack $ show d
+    prettyPrintAST (SBI op asts) = let postfix = T.unwords (map prettyPrintAST asts) <> ")" in case op of 
+      PlusR -> "(+" <> postfix
+      MinusR -> "(-" <> postfix
+      MultiplicationR -> "(*" <> postfix
+      DivisionR -> "(/" <> postfix
+    prettyPrintAST (List asts) = 
+            "(" <> T.unwords (map prettyPrintAST asts) <> ")"
+
+
     eval :: AST -> IO ()
-    eval (S d) = print d
-    eval (SBI op asts) = print (simplifySBI op asts)
-    eval (List asts) = print (map simplifyAST asts)
+    eval ast = putStrLn $ T.unpack $ prettyPrintAST $ simplifyAST ast
 

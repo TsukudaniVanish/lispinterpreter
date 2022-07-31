@@ -23,13 +23,13 @@ module Node where
         Leaf x >>= f = f x
         Tree ny nz >>= f = Tree (ny >>= f) (nz >>= f)
     
-    prettyPrint :: (Show a) => Node a -> Int -> T.Text
-    prettyPrint (Leaf x) offset = T.concat (replicate offset " ") <> T.pack  (show x) <> "\n"
-    prettyPrint (Tree ny nz) offset = 
+    prettyPrintNode :: (Show a) => Node a -> Int -> T.Text
+    prettyPrintNode (Leaf x) offset = T.concat (replicate offset " ") <> T.pack  (show x) <> "\n"
+    prettyPrintNode (Tree ny nz) offset = 
         let 
             prefix =  T.concat (replicate offset " ")
         in seq prefix $ 
             prefix <> "Tree " <> "\n"
-            <> prefix <> "Left:\n" <> prettyPrint ny (offset + 4)
-            <> prefix <> "Right:\n" <> prettyPrint nz (offset + 4)  
+            <> prefix <> "Left:\n" <> prettyPrintNode ny (offset + 4)
+            <> prefix <> "Right:\n" <> prettyPrintNode nz (offset + 4)  
     

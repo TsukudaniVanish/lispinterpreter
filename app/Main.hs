@@ -1,6 +1,5 @@
 module Main where
 
-import Lib
 import Lexer
 import Node 
 import Parser
@@ -45,7 +44,7 @@ doArg arg =   do
                     putStrLn (T.unpack txt)
                     loop
                   Right no -> do
-                    eval no
+                    let ast = stToAST no
+                    eval ast
                     loop 
-
 
