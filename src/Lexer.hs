@@ -7,7 +7,7 @@ module Lexer
         LexicalObject(..)
     )where 
 
-import Lib
+
 import qualified Data.Text as T
 
 

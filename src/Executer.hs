@@ -1,52 +1,58 @@
 {-# LANGUAGE BlockArguments, OverloadedStrings #-}
 module Executer (
-    evalAtom,
-    eval
+    eval,
+    simplifyAST
 ) where
     import Lexer
     import Node 
     import Parser 
 
     import qualified Data.Text as T
+    
+    isNumberR :: RuntimeData -> Bool
+    isNumberR d = case d of 
+      NullR -> False 
+      NumberR n -> True 
+      BiOperatorR rbo -> False
+      RuntimeError txt -> False
 
-    isNumber :: Atom -> Bool
-    isNumber a = case a of
-      NULL -> False
-      Number n -> True 
-      Operator sym -> False
+    unwrapNumberR :: RuntimeData -> Maybe Int 
+    unwrapNumberR d = case d of 
+        NumberR n -> Just n
+        _ -> Nothing
 
-    isOperator :: Atom -> Bool
-    isOperator a = case a of 
-      NULL -> False 
-      Number n -> False 
-      Operator sym -> case sym of 
-        ParenthesesOpen -> False
-        ParenthesesClose -> False
-        _ -> True 
+    isNumberS :: AST -> Bool
+    isNumberS (S x) = isNumberR x
+    isNumberS _ = False
 
-    evalAtom :: ST -> [Atom]
-    evalAtom (Leaf x) = [x]
-    evalAtom (Tree ny nz) = do 
-        let y = evalAtom ny
-            z = evalAtom nz
-        if length y == 1 && isOperator (head y) then
-            if length z == 2 && all isNumber z then do 
-                let operator = case head y of
-                        Operator sym -> sym
-                        _ -> undefined
-                    [Number n, Number m] = z
-                    res =  case operator of 
-                        Plus -> Number (n + m)
-                        Minus -> Number (n - m)
-                        Asterisk -> Number (n * m)
-                        BackSlash -> Number (n `div` m)
-                        _ -> undefined
-                [res]
-            else 
-                []
-        else 
-            y <> z
+    unwrapNumberS :: AST -> Maybe Int
+    unwrapNumberS (S d) = unwrapNumberR d
+    unwrapNumberS _ = Nothing
 
-    eval :: ST -> IO ()
-    eval st = print (evalAtom st)
+    unwrapNumbers :: [AST] -> Maybe [Int]
+    unwrapNumbers = mapM unwrapNumberS 
+
+
+    simplifySBI :: RuntimeBiOperator -> [AST] -> AST 
+    simplifySBI op asts = if length asts < 2 then S (RuntimeError "too few operands") else
+        let 
+            asts' = map simplifyAST asts
+            mNumbers = unwrapNumbers asts'
+        in case mNumbers of
+          Nothing -> S (RuntimeError "invalid operands")
+          Just ns -> case op of 
+            PlusR -> S (NumberR (sum ns))
+            MinusR -> S (NumberR (foldl (-) (head ns) (tail ns)))
+            MultiplicationR -> S (NumberR (product ns))
+            DivisionR -> S (NumberR (foldl div (head ns) (tail ns)))
+
+    simplifyAST :: AST -> AST
+    simplifyAST (S rte) = S rte
+    simplifyAST (SBI op asts) = simplifySBI op asts
+    simplifyAST (List asts) = List (map simplifyAST asts)
+
+    eval :: AST -> IO ()
+    eval (S d) = print d
+    eval (SBI op asts) = print (simplifySBI op asts)
+    eval (List asts) = print (map simplifyAST asts)
 

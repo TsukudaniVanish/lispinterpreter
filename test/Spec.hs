@@ -9,7 +9,7 @@ import Test.HUnit
 main = 
     runTestTT tests
 
-tests = TestList $ concat [testLexicalAnalyzerOneWord, testLexicalAnalyze, testGenST, testEvalAtom]
+tests = TestList $ concat [testLexicalAnalyzerOneWord, testLexicalAnalyze, testGenST, testSimplifyAST]
 testLexicalAnalyzerOneWord = [
     TestCase (assertEqual "for lexicalAnalyzeOneWord" (lexicalAnalyzeOneWord "+") (Just $ ValidSymbol Plus)),
     TestCase (assertEqual "for lexicalAnalyzeOneWord" (lexicalAnalyzeOneWord "FAIL") Nothing)
@@ -39,17 +39,31 @@ testGenST = [
                 in genST arg
             )
             (Right $ Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2)))))
+    ),
+    TestCase (
+        assertEqual "check st to ast"
+            (
+                let
+                    st = Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2))))
+                in 
+                    stToAST st
+            )
+            (
+                SBI PlusR [S (NumberR 1), SBI MinusR [S (NumberR 1), S (NumberR 2)]]
+            )
     )
     ]
 
-testEvalAtom = [
-    TestCase (
-        assertEqual "check evalAtom"
-            (
-                evalAtom $ Tree (Leaf $ Operator Plus) (Tree (Leaf $ Number 1) (Tree (Leaf $ Operator Minus) (Tree (Leaf $ Number 1) (Leaf $ Number 2))))
-            )
-            (
-                [Number 0]
-            )
-    )
+testSimplifyAST = 
+    [
+        TestCase (
+            assertEqual "check simplifyAST" 
+                (let 
+                    ast = SBI PlusR [S (NumberR 1), SBI MinusR [S (NumberR 1), S (NumberR 2)]]
+                in simplifyAST ast
+                )
+                (
+                    S (NumberR 0)
+                )
+        )
     ]
